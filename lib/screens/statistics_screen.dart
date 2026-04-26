@@ -32,7 +32,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   double get _completionRate =>
       _totalInMonth == 0 ? 0 : (_doneInMonth / _totalInMonth) * 100;
 
-  // Simple data for Area Chart (completion per day of month)
   List<FlSpot> get _areaChartData {
     final List<FlSpot> spots = [];
     final daysInMonth =
@@ -66,7 +65,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
         child: SingleChildScrollView(
-          // ← This fixes the overflow
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,13 +78,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              const Text(
                 'Track your monthly progress',
                 style: TextStyle(fontSize: 13, color: Colors.white38),
               ),
               const SizedBox(height: 24),
 
-              // Calendar
+              // ── Calendar ────────────────────────────────────────────────────
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF141414),
@@ -145,7 +143,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
               const SizedBox(height: 28),
 
-              // Summary Card
+              // ── Summary Card ─────────────────────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -175,67 +173,122 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Area Chart
-              Container(
-                height: 280,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+              // ── Area Chart ───────────────────────────────────────────────────
+              // FIX: Wrap in ClipRRect so the line can never draw outside the
+              // rounded container. Also add minY/maxY so the Y-axis is locked
+              // to 0–100 and the line can't spike above the chart boundary.
+              // The top chartSpacingY inside the chart gives stroke room.
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  height: 280,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                   color: const Color(0xFF141414),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: _totalInMonth > 0
-                    ? LineChart(
-                        LineChartData(
-                          gridData: const FlGridData(show: false),
-                          titlesData: FlTitlesData(
-                            leftTitles: const AxisTitles(
-                                sideTitles: SideTitles(showTitles: false)),
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 30,
-                                getTitlesWidget: (value, meta) {
-                                  if (value % 5 == 0 || value == 1) {
-                                    return Text(
-                                      '${value.toInt()}',
-                                      style: const TextStyle(
-                                          color: Colors.white54, fontSize: 10),
-                                    );
-                                  }
-                                  return const SizedBox();
-                                },
+                  child: _totalInMonth > 0
+                      ? LineChart(
+                          LineChartData(
+                            // KEY FIX: lock Y range so 100% never overflows
+                            minY: 0,
+                            maxY: 100,
+                            // KEY FIX: add top inset so stroke at y=100
+                            // has room inside the paint area
+                            clipData: const FlClipData.all(),
+                            gridData: const FlGridData(show: false),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 36,
+                                  interval: 25,
+                                  getTitlesWidget: (value, meta) {
+                                    if (value % 25 == 0) {
+                                      return Text(
+                                        '${value.toInt()}',
+                                        style: const TextStyle(
+                                            color: Colors.white24,
+                                            fontSize: 10),
+                                      );
+                                    }
+                                    return const SizedBox();
+                                  },
+                                ),
+                              ),
+                              rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 28,
+                                  getTitlesWidget: (value, meta) {
+                                    if (value % 5 == 0 || value == 1) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Text(
+                                          '${value.toInt()}',
+                                          style: const TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 10),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox();
+                                  },
+                                ),
                               ),
                             ),
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: _areaChartData,
+                                isCurved: true,
+                                curveSmoothness: 0.35,
+                                color: const Color(0xFF00E676),
+                                barWidth: 2.5,
+                                isStrokeCapRound: true,
+                                preventCurveOverShooting: true, // KEY FIX
+                                preventCurveOvershootingThreshold: 10,
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      const Color(0xFF00E676).withOpacity(0.25),
+                                      const Color(0xFF00E676).withOpacity(0.0),
+                                    ],
+                                  ),
+                                ),
+                                dotData: FlDotData(
+                                  show: true,
+                                  checkToShowDot: (spot, barData) => spot.y > 0,
+                                  getDotPainter: (spot, pct, bar, idx) =>
+                                      FlDotCirclePainter(
+                                    radius: 3,
+                                    color: const Color(0xFF00E676),
+                                    strokeWidth: 0,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          borderData: FlBorderData(show: false),
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: _areaChartData,
-                              isCurved: true,
-                              color: const Color(0xFF00E676),
-                              barWidth: 4,
-                              isStrokeCapRound: true,
-                              belowBarData: BarAreaData(
-                                show: true,
-                                color: const Color(0xFF00E676).withOpacity(0.2),
-                              ),
-                              dotData: const FlDotData(show: false),
-                            ),
-                          ],
+                        )
+                      : const Center(
+                          child: Text(
+                            'Add some tasks to see progress chart',
+                            style: TextStyle(color: Colors.white38),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                      )
-                    : const Center(
-                        child: Text(
-                          'Add some tasks to see progress chart',
-                          style: TextStyle(color: Colors.white38),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                ),
               ),
 
               const SizedBox(height: 32),
 
-              // Activities List
+              // ── Activities List ──────────────────────────────────────────────
               const Text(
                 'Activities this month',
                 style: TextStyle(
@@ -268,18 +321,28 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           decoration: BoxDecoration(
                             color: const Color(0xFF161616),
                             borderRadius: BorderRadius.circular(14),
+                            border: Border(
+                              left: BorderSide(color: task.color, width: 3),
+                            ),
                           ),
                           child: Row(
                             children: [
                               Container(
-                                width: 6,
-                                height: 40,
+                                width: 38,
+                                height: 38,
                                 decoration: BoxDecoration(
+                                  color: task.color.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  task.isDone
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
                                   color: task.color,
-                                  borderRadius: BorderRadius.circular(4),
+                                  size: 20,
                                 ),
                               ),
-                              const SizedBox(width: 14),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,12 +351,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                       task.name,
                                       style: TextStyle(
                                         color: task.isDone
-                                            ? Colors.white54
+                                            ? Colors.white38
                                             : Colors.white,
                                         fontWeight: FontWeight.w600,
+                                        fontSize: 15,
                                         decoration: task.isDone
                                             ? TextDecoration.lineThrough
                                             : null,
+                                        decorationColor: Colors.white38,
                                       ),
                                     ),
                                     if (task.description.isNotEmpty)
@@ -301,19 +366,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                         task.description,
                                         style: const TextStyle(
                                           color: Colors.white38,
-                                          fontSize: 13,
+                                          fontSize: 12,
                                         ),
                                       ),
                                   ],
                                 ),
                               ),
-                              Text(
-                                task.isDone ? '✓ Done' : 'Pending',
-                                style: TextStyle(
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
                                   color: task.isDone
                                       ? const Color(0xFF00E676)
-                                      : Colors.white54,
-                                  fontWeight: FontWeight.w600,
+                                          .withOpacity(0.12)
+                                      : Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  task.isDone ? '✓ Done' : 'Pending',
+                                  style: TextStyle(
+                                    color: task.isDone
+                                        ? const Color(0xFF00E676)
+                                        : Colors.white38,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ],
@@ -348,7 +425,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         ],
       );
 
-  // Sample tasks for testing
   List<Task> _getSampleTasks() {
     final now = DateTime.now();
     return [
