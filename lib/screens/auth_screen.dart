@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -19,6 +20,8 @@ class _AuthScreenState extends State<AuthScreen>
       TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -39,12 +42,45 @@ class _AuthScreenState extends State<AuthScreen>
     super.dispose();
   }
 
-  void toggleAuthMode() {
-    setState(() => isLogin = !isLogin);
-  }
+  Future<void> handleSubmit() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-  void handleSubmit() {
-    Navigator.pushReplacementNamed(context, '/home');
+    try {
+      if (isLogin) {
+        await AuthService.signIn(
+          email: emailController.text.trim(),
+          password: passwordController.text,
+        );
+      } else {
+        final password = passwordController.text;
+        final confirm = confirmPasswordController.text;
+        if (password != confirm) {
+          throw 'Passwords do not match';
+        }
+        if (password.length < 6) {
+          throw 'Password must be at least 6 characters';
+        }
+        await AuthService.signUp(
+          name: nameController.text.trim(),
+          email: emailController.text.trim(),
+          password: password,
+        );
+      }
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -61,7 +97,6 @@ class _AuthScreenState extends State<AuthScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 48),
-              // Logo row
               Row(
                 children: [
                   Container(
@@ -118,7 +153,6 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 36),
 
-              // Toggle Tabs
               Container(
                 height: 50,
                 decoration: BoxDecoration(
@@ -138,7 +172,23 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 28),
 
-              // Form
+              if (_error != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: Column(
@@ -183,7 +233,7 @@ class _AuthScreenState extends State<AuthScreen>
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () {},
+                          onPressed: _showForgotPasswordDialog,
                           child: const Text(
                             'Forgot Password?',
                             style: TextStyle(color: green, fontSize: 13),
@@ -196,12 +246,11 @@ class _AuthScreenState extends State<AuthScreen>
               ),
               const SizedBox(height: 28),
 
-              // Submit button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: handleSubmit,
+                  onPressed: _isLoading ? null : handleSubmit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: green,
                     foregroundColor: Colors.black,
@@ -210,48 +259,81 @@ class _AuthScreenState extends State<AuthScreen>
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    isLogin ? 'Sign In' : 'Create Account',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.black),
+                          ),
+                        )
+                      : Text(
+                          isLogin ? 'Sign In' : 'Create Account',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
                 ),
-              ),
-              const SizedBox(height: 24),
-
-              // Divider
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Colors.white12)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('or continue with',
-                        style: TextStyle(
-                            color: Colors.white.withOpacity(0.3),
-                            fontSize: 13)),
-                  ),
-                  const Expanded(child: Divider(color: Colors.white12)),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Social buttons
-              Row(
-                children: [
-                  Expanded(
-                      child: _socialBtn(Icons.g_mobiledata_rounded, 'Google')),
-                  const SizedBox(width: 16),
-                  Expanded(
-                      child: _socialBtn(Icons.facebook_rounded, 'Facebook')),
-                ],
               ),
               const SizedBox(height: 32),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void toggleAuthMode() {
+    setState(() {
+      isLogin = !isLogin;
+      _error = null;
+    });
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset Password',
+            style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.emailAddress,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: 'Enter your email',
+            hintStyle: TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                AuthService.resetPassword(controller.text.trim());
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Password reset email sent'),
+                    backgroundColor: Color(0xFF00E676),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Send', style: TextStyle(color: Color(0xFF00E676))),
+          ),
+        ],
       ),
     );
   }
@@ -322,29 +404,6 @@ class _AuthScreenState extends State<AuthScreen>
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      ),
-    );
-  }
-
-  Widget _socialBtn(IconData icon, String label) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white54, size: 22),
-          const SizedBox(width: 8),
-          Text(label,
-              style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600)),
-        ],
       ),
     );
   }

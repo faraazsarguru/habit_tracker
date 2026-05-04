@@ -1,27 +1,8 @@
 import 'package:flutter/material.dart';
-
-// Task model
-class Task {
-  final String name;
-  final String description;
-  final DateTime? singleDate;
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final bool isDuration;
-  final Color color;
-  bool isDone;
-
-  Task({
-    required this.name,
-    required this.description,
-    this.singleDate,
-    this.startDate,
-    this.endDate,
-    required this.isDuration,
-    required this.color,
-    this.isDone = false,
-  });
-}
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/task.dart';
+import '../services/task_service.dart';
 
 const List<Color> kTaskColors = [
   Color(0xFF00E676),
@@ -41,24 +22,20 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final List<Task> _tasks = [];
+  String get _userId => FirebaseAuth.instance.currentUser!.uid;
 
-  int get _doneCount => _tasks.where((t) => t.isDone).length;
-
-  void _openAddTaskDialog() {
-    showDialog(
+  Future<void> _openAddTaskDialog() {
+    return showDialog(
       context: context,
       barrierColor: Colors.black87,
-      builder: (context) => AddTaskDialog(
-        onTaskAdded: (task) => setState(() => _tasks.add(task)),
-      ),
+      builder: (context) => AddTaskDialog(userId: _userId),
     );
   }
 
   String _greeting() {
     final h = DateTime.now().hour;
     if (h < 12) return 'Good morning ☀️';
-    if (h < 17) return 'Good afternoon 🌤';
+    if (h < 17) return 'Good afternoon ☀️';
     return 'Good evening 🌙';
   }
 
@@ -70,7 +47,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
               child: Row(
@@ -104,65 +80,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // ── Summary card ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _stat('Total', '${_tasks.length}'),
-                    _vDivider(),
-                    _stat('Done', '$_doneCount'),
-                    _vDivider(),
-                    _stat('Streak', '0 🔥'),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // ── Tasks header ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('My Tasks',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700)),
-                  Text('${_tasks.length} tasks',
-                      style: const TextStyle(
-                          color: Color(0xFF888888), fontSize: 14)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // ── Task list ──
-            Expanded(
-              child: _tasks.isEmpty
-                  ? _emptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: _tasks.length,
-                      itemBuilder: (ctx, i) => _TaskCard(
-                        task: _tasks[i],
-                        onToggle: () => setState(
-                            () => _tasks[i].isDone = !_tasks[i].isDone),
+            StreamBuilder<QuerySnapshot>(
+              stream: TaskService.streamTasks(_userId),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Error loading tasks'));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
                       ),
                     ),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? [];
+                final tasks = docs
+                    .map((d) =>
+                        Task.fromMap(d.data() as Map<String, dynamic>, d.id))
+                    .toList();
+                final doneCount = tasks.where((t) => t.isDone).length;
+
+                return Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                                colors: [Color(0xFF00E676), Color(0xFF00BFA5)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _stat('Total', '${tasks.length}'),
+                              _vDivider(),
+                              _stat('Done', '$doneCount'),
+                              _vDivider(),
+                              _stat('Streak', '0 🔥'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('My Tasks',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700)),
+                            Text('${tasks.length} tasks',
+                                style: const TextStyle(
+                                    color: Color(0xFF888888), fontSize: 14)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: tasks.isEmpty
+                            ? _emptyState()
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                itemCount: tasks.length,
+                                itemBuilder: (ctx, i) => _TaskCard(
+                                  task: tasks[i],
+                                  onToggle: () => TaskService.toggleDone(
+                                    userId: _userId,
+                                    taskId: tasks[i].id!,
+                                    isDone: tasks[i].isDone,
+                                  ),
+                                  onDelete: () => TaskService.deleteTask(
+                                    userId: _userId,
+                                    taskId: tasks[i].id!,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -224,11 +232,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 }
 
-// ── Task Card ──────────────────────────────────────────────────────────────
 class _TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback onToggle;
-  const _TaskCard({required this.task, required this.onToggle});
+  final VoidCallback onDelete;
+  const _TaskCard(
+      {required this.task, required this.onToggle, required this.onDelete});
 
   String _fmt(DateTime d) => '${d.day}/${d.month}/${d.year}';
 
@@ -315,16 +324,30 @@ class _TaskCard extends StatelessWidget {
                   : null,
             ),
           ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onDelete,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: Colors.transparent,
+                border: Border.all(color: Colors.red.withOpacity(0.3), width: 2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_outline_rounded,
+                  color: Colors.redAccent, size: 16),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Add Task Dialog ────────────────────────────────────────────────────────
 class AddTaskDialog extends StatefulWidget {
-  final Function(Task) onTaskAdded;
-  const AddTaskDialog({super.key, required this.onTaskAdded});
+  final String userId;
+  const AddTaskDialog({super.key, required this.userId});
 
   @override
   State<AddTaskDialog> createState() => _AddTaskDialogState();
@@ -336,6 +359,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   bool _isDuration = false;
   DateTime? _singleDate, _startDate, _endDate;
   Color _selectedColor = kTaskColors[0];
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -374,21 +398,25 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     });
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_nameCtrl.text.trim().isEmpty) return;
     if (!_isDuration && _singleDate == null) return;
     if (_isDuration && (_startDate == null || _endDate == null)) return;
 
-    widget.onTaskAdded(Task(
+    setState(() => _isLoading = true);
+
+    await TaskService.addTask(
+      userId: widget.userId,
       name: _nameCtrl.text.trim(),
       description: _descCtrl.text.trim(),
       singleDate: _isDuration ? null : _singleDate,
       startDate: _isDuration ? _startDate : null,
       endDate: _isDuration ? _endDate : null,
       isDuration: _isDuration,
-      color: _selectedColor,
-    ));
-    Navigator.pop(context);
+      colorHex: '0x${_selectedColor.value.toRadixString(16).padLeft(8, '0')}',
+    );
+
+    if (mounted) Navigator.pop(context);
   }
 
   String _fmtD(DateTime? d) =>
@@ -406,7 +434,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -429,14 +456,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // Task Name
             _lbl('Task Name'),
             const SizedBox(height: 8),
             _field(controller: _nameCtrl, hint: 'e.g. Morning Run'),
             const SizedBox(height: 16),
-
-            // Description
             _lbl('Description'),
             const SizedBox(height: 8),
             _field(
@@ -444,8 +467,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                 hint: 'Optional description...',
                 maxLines: 3),
             const SizedBox(height: 20),
-
-            // Date type toggle
             _lbl('Date Type'),
             const SizedBox(height: 10),
             Container(
@@ -459,8 +480,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               ]),
             ),
             const SizedBox(height: 16),
-
-            // Date pickers
             if (!_isDuration) ...[
               _lbl('Date'),
               const SizedBox(height: 8),
@@ -475,8 +494,6 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               _dateBtn(_fmtD(_endDate), () => _pick(isStart: false)),
             ],
             const SizedBox(height: 20),
-
-            // Task Color
             _lbl('Task Color'),
             const SizedBox(height: 12),
             Row(
@@ -511,13 +528,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
               }).toList(),
             ),
             const SizedBox(height: 28),
-
-            // Add button
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _submit,
+                onPressed: _isLoading ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00E676),
                   foregroundColor: const Color(0xFF0A0A0A),
@@ -525,9 +540,17 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: const Text('Add Task',
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0A0A0A)),
+                        ),
+                      )
+                    : const Text('Add Task',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ),
             ),
           ],

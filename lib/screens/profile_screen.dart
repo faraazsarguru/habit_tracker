@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const _green = Color(0xFF00E676);
 
@@ -7,6 +8,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = user?.displayName ?? 'User';
+    final email = user?.email ?? 'user@example.com';
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
@@ -24,7 +29,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 28),
-              // Avatar
               Center(
                 child: Column(
                   children: [
@@ -36,22 +40,31 @@ class ProfileScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(color: _green, width: 2),
                       ),
-                      child: const Icon(Icons.person_rounded,
-                          size: 48, color: _green),
+                      child: user?.photoURL != null
+                          ? ClipOval(
+                              child: Image.network(
+                                user!.photoURL!,
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(Icons.person_rounded,
+                              size: 48, color: _green),
                     ),
                     const SizedBox(height: 14),
-                    const Text(
-                      'User Name',
-                      style: TextStyle(
+                    Text(
+                      displayName,
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'user@example.com',
-                      style: TextStyle(fontSize: 13, color: Colors.white38),
+                    Text(
+                      email,
+                      style: const TextStyle(fontSize: 13, color: Colors.white38),
                     ),
                   ],
                 ),
@@ -66,18 +79,111 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 20),
               _sectionTitle('App'),
               const SizedBox(height: 12),
-              _settingsItem(
-                  Icons.help_outline_rounded, 'Help & Support', () {}),
-              _settingsItem(
-                  Icons.info_outline_rounded, 'About Habitzzz', () {}),
+              _settingsItem(Icons.help_outline_rounded, 'Help & Support', () {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    title: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: _green,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.check_circle_rounded,
+                              color: Colors.black, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Habitzzz',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    content: const Text(
+                      'Habitzzz helps you build better habits and track your daily tasks with ease.',
+                      style: TextStyle(
+                          color: Colors.white70, fontSize: 14, height: 1.5),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK',
+                            style: TextStyle(
+                                color: _green, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              _settingsItem(Icons.info_outline_rounded, 'About Habitzzz', () {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    title: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: _green,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.check_circle_rounded,
+                              color: Colors.black, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text('Habitzzz',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    content: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Habitzzz helps you build better habits and track your daily tasks with ease.',
+                          style: TextStyle(
+                              color: Colors.white70, fontSize: 14, height: 1.5),
+                        ),
+                        SizedBox(height: 12),
+                        Text('Made by the Habitzzz team.',
+                            style:
+                                TextStyle(color: Colors.white38, fontSize: 13)),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close',
+                            style: TextStyle(
+                                color: _green, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
               const SizedBox(height: 20),
-              // Logout
-              Container(
+              SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushReplacementNamed(context, '/auth'),
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                    if (context.mounted) {
+                      Navigator.pushReplacementNamed(context, '/auth');
+                    }
+                  },
                   icon: const Icon(Icons.logout_rounded, size: 18),
                   label: const Text('Log Out',
                       style:
