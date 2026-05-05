@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/theme_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -86,10 +88,19 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   Widget build(BuildContext context) {
     const green = Color(0xFF00E676);
-    const darkSurface = Color(0xFF1A1A1A);
+    final themeService = context.watch<ThemeService>();
+    final isDark = themeService.isDarkMode;
+
+    final bg = isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
+    final cardBg = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF121212);
+    final textSecondary = isDark ? Colors.white38 : const Color(0xFF888888);
+    final textTertiary = isDark ? Colors.white24 : const Color(0xFF666666);
+    final inputBg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0);
+    final inputBorder = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -118,7 +129,7 @@ class _AuthScreenState extends State<AuthScreen>
                           style: TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                            color: Color(0xFF121212),
                           ),
                         ),
                         TextSpan(
@@ -137,10 +148,10 @@ class _AuthScreenState extends State<AuthScreen>
               const SizedBox(height: 40),
               Text(
                 isLogin ? 'Welcome\nBack 👋' : 'Create\nAccount ✨',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: textPrimary,
                   height: 1.1,
                 ),
               ),
@@ -149,24 +160,24 @@ class _AuthScreenState extends State<AuthScreen>
                 isLogin
                     ? 'Sign in to continue your journey'
                     : 'Start building better habits today',
-                style: const TextStyle(fontSize: 15, color: Colors.white38),
+                style: TextStyle(fontSize: 15, color: textSecondary),
               ),
               const SizedBox(height: 36),
 
               Container(
                 height: 50,
                 decoration: BoxDecoration(
-                  color: darkSurface,
+                  color: cardBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   children: [
                     _buildTab('Login', isLogin, () {
                       if (!isLogin) toggleAuthMode();
-                    }),
+                    }, textTertiary),
                     _buildTab('Register', !isLogin, () {
                       if (isLogin) toggleAuthMode();
-                    }),
+                    }, textTertiary),
                   ],
                 ),
               ),
@@ -199,6 +210,10 @@ class _AuthScreenState extends State<AuthScreen>
                         controller: nameController,
                         label: 'Full Name',
                         icon: Icons.person_outline_rounded,
+                        inputBg: inputBg,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        inputBorder: inputBorder,
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -207,6 +222,10 @@ class _AuthScreenState extends State<AuthScreen>
                       label: 'Email Address',
                       icon: Icons.email_outlined,
                       keyboardType: TextInputType.emailAddress,
+                      inputBg: inputBg,
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                      inputBorder: inputBorder,
                     ),
                     const SizedBox(height: 16),
                     _buildField(
@@ -216,6 +235,10 @@ class _AuthScreenState extends State<AuthScreen>
                       obscure: _obscurePassword,
                       toggleObscure: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
+                      inputBg: inputBg,
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                      inputBorder: inputBorder,
                     ),
                     if (!isLogin) ...[
                       const SizedBox(height: 16),
@@ -226,6 +249,10 @@ class _AuthScreenState extends State<AuthScreen>
                         obscure: _obscureConfirm,
                         toggleObscure: () =>
                             setState(() => _obscureConfirm = !_obscureConfirm),
+                        inputBg: inputBg,
+                        textPrimary: textPrimary,
+                        textSecondary: textSecondary,
+                        inputBorder: inputBorder,
                       ),
                     ],
                     if (isLogin) ...[
@@ -265,8 +292,7 @@ class _AuthScreenState extends State<AuthScreen>
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.black),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                           ),
                         )
                       : Text(
@@ -295,27 +321,32 @@ class _AuthScreenState extends State<AuthScreen>
   }
 
   Future<void> _showForgotPasswordDialog() async {
+    final themeService = context.read<ThemeService>();
+    final isDark = themeService.isDarkMode;
+    final cardBg = isDark ? const Color(0xFF1A1A1A) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF121212);
+    final textSecondary = isDark ? Colors.white38 : const Color(0xFF888888);
+
     final controller = TextEditingController();
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Reset Password',
-            style: TextStyle(color: Colors.white)),
+        title: Text('Reset Password', style: TextStyle(color: textPrimary)),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
+          style: TextStyle(color: textPrimary),
+          decoration: InputDecoration(
             hintText: 'Enter your email',
-            hintStyle: TextStyle(color: Colors.white38),
+            hintStyle: TextStyle(color: textSecondary),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white38)),
+            child: Text('Cancel', style: TextStyle(color: textSecondary)),
           ),
           TextButton(
             onPressed: () {
@@ -338,7 +369,7 @@ class _AuthScreenState extends State<AuthScreen>
     );
   }
 
-  Widget _buildTab(String label, bool active, VoidCallback onTap) {
+  Widget _buildTab(String label, bool active, VoidCallback onTap, Color inactiveColor) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -355,7 +386,7 @@ class _AuthScreenState extends State<AuthScreen>
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: active ? Colors.black : Colors.white38,
+              color: active ? Colors.black : inactiveColor,
             ),
           ),
         ),
@@ -370,30 +401,34 @@ class _AuthScreenState extends State<AuthScreen>
     TextInputType? keyboardType,
     bool obscure = false,
     VoidCallback? toggleObscure,
+    required Color inputBg,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color inputBorder,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscure,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: TextStyle(color: textPrimary, fontSize: 15),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.white38, fontSize: 14),
-        prefixIcon: Icon(icon, color: Colors.white24, size: 20),
+        labelStyle: TextStyle(color: textSecondary, fontSize: 14),
+        prefixIcon: Icon(icon, color: textSecondary.withOpacity(0.6), size: 20),
         suffixIcon: toggleObscure != null
             ? IconButton(
                 icon: Icon(
                   obscure
                       ? Icons.visibility_off_outlined
                       : Icons.visibility_outlined,
-                  color: Colors.white24,
+                  color: textSecondary.withOpacity(0.6),
                   size: 20,
                 ),
                 onPressed: toggleObscure,
               )
             : null,
         filled: true,
-        fillColor: const Color(0xFF1A1A1A),
+        fillColor: inputBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,

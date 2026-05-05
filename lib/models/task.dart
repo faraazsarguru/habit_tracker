@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum Priority { high, medium, low }
+
 class Task {
   final String? id;
   final String name;
@@ -9,12 +11,34 @@ class Task {
   final DateTime? startDate;
   final DateTime? endDate;
   final bool isDuration;
-  final String colorHex;
+  final String priority;
   final bool isDone;
   final DateTime createdAt;
   final String userId;
 
-  Color get color => Color(int.parse(colorHex));
+  Color get color {
+    switch (priority) {
+      case 'high':
+        return const Color(0xFFFF5252);
+      case 'medium':
+        return const Color(0xFF448AFF);
+      case 'low':
+      default:
+        return const Color(0xFFFFD740);
+    }
+  }
+
+  String get priorityLabel {
+    switch (priority) {
+      case 'high':
+        return 'High';
+      case 'medium':
+        return 'Medium';
+      case 'low':
+      default:
+        return 'Easy';
+    }
+  }
 
   Task({
     this.id,
@@ -24,7 +48,7 @@ class Task {
     this.startDate,
     this.endDate,
     required this.isDuration,
-    required this.colorHex,
+    required this.priority,
     this.isDone = false,
     required this.createdAt,
     required this.userId,
@@ -38,7 +62,7 @@ class Task {
       'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'isDuration': isDuration,
-      'colorHex': colorHex,
+      'priority': priority,
       'isDone': isDone,
       'createdAt': Timestamp.fromDate(createdAt),
       'userId': userId,
@@ -61,7 +85,7 @@ class Task {
       startDate: toDate(map['startDate']),
       endDate: toDate(map['endDate']),
       isDuration: map['isDuration'] ?? false,
-      colorHex: map['colorHex'] ?? '0xFF00E676',
+      priority: map['priority'] ?? 'low',
       isDone: map['isDone'] ?? false,
       createdAt: toDate(map['createdAt']) ?? DateTime.now(),
       userId: map['userId'] ?? '',

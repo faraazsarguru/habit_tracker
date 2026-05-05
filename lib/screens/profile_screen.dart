@@ -1,89 +1,129 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/theme_service.dart';
 
 const _green = Color(0xFF00E676);
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _displayName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  void _loadProfile() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _displayName = user.displayName ?? 'User';
+  }
+
+  Future<void> _openEditProfile() async {
+    final result = await Navigator.pushNamed(context, '/edit-profile');
+    if (mounted && result == true) {
+      _loadProfile();
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'User';
     final email = user?.email ?? 'user@example.com';
+    final themeService = context.watch<ThemeService>();
+    final isDark = themeService.isDarkMode;
+
+    final bg = isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
+    final cardBg = isDark ? const Color(0xFF161616) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF121212);
+    final textSecondary = isDark ? Colors.white38 : const Color(0xFF888888);
+    final iconColor = isDark ? Colors.white54 : const Color(0xFF666666);
+    final dividerColor = isDark ? Colors.white24 : const Color(0xFFCCCCCC);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Profile',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: textPrimary,
                 ),
               ),
               const SizedBox(height: 28),
               Center(
                 child: Column(
                   children: [
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        color: _green.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _green, width: 2),
-                      ),
-                      child: user?.photoURL != null
-                          ? ClipOval(
-                              child: Image.network(
-                                user!.photoURL!,
-                                width: 90,
-                                height: 90,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(Icons.person_rounded,
-                              size: 48, color: _green),
-                    ),
-                    const SizedBox(height: 14),
                     Text(
-                      displayName,
-                      style: const TextStyle(
+                      _displayName ?? 'User',
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       email,
-                      style: const TextStyle(fontSize: 13, color: Colors.white38),
+                      style: TextStyle(fontSize: 13, color: textSecondary),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 32),
-              _sectionTitle('Account'),
+              _sectionTitle('Account', color: textSecondary),
               const SizedBox(height: 12),
-              _settingsItem(Icons.edit_outlined, 'Edit Profile', () {}),
-              _settingsItem(
-                  Icons.notifications_outlined, 'Notifications', () {}),
-              _settingsItem(Icons.lock_outline_rounded, 'Privacy', () {}),
+              _settingsItem(Icons.edit_outlined, 'Edit Profile', _openEditProfile,
+                  iconColor: iconColor, textColor: textPrimary, cardBg: cardBg, dividerColor: dividerColor),
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.dark_mode_outlined, color: iconColor, size: 20),
+                    const SizedBox(width: 14),
+                    Text('Dark Mode',
+                        style: TextStyle(
+                            fontSize: 15,
+                            color: textPrimary,
+                            fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    Switch(
+                      value: isDark,
+                      onChanged: (_) => themeService.toggleTheme(),
+                      activeThumbColor: _green,
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 20),
-              _sectionTitle('App'),
+              _sectionTitle('App', color: textSecondary),
               const SizedBox(height: 12),
               _settingsItem(Icons.help_outline_rounded, 'Help & Support', () {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    backgroundColor: const Color(0xFF1A1A1A),
+                    backgroundColor: cardBg,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20)),
                     title: Row(
@@ -99,16 +139,16 @@ class ProfileScreen extends StatelessWidget {
                               color: Colors.black, size: 22),
                         ),
                         const SizedBox(width: 12),
-                        const Text('Habitzzz',
+                        Text('Habitzzz',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: textPrimary,
                                 fontWeight: FontWeight.w800)),
                       ],
                     ),
-                    content: const Text(
-                      'Habitzzz helps you build better habits and track your daily tasks with ease.',
+                    content: Text(
+                      'For help contact - "9987055635"',
                       style: TextStyle(
-                          color: Colors.white70, fontSize: 14, height: 1.5),
+                          color: textSecondary, fontSize: 14, height: 1.5),
                     ),
                     actions: [
                       TextButton(
@@ -120,12 +160,12 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }),
+              }, iconColor: iconColor, textColor: textPrimary, cardBg: cardBg, dividerColor: dividerColor),
               _settingsItem(Icons.info_outline_rounded, 'About Habitzzz', () {
                 showDialog(
                   context: context,
                   builder: (_) => AlertDialog(
-                    backgroundColor: const Color(0xFF1A1A1A),
+                    backgroundColor: cardBg,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20)),
                     title: Row(
@@ -141,25 +181,24 @@ class ProfileScreen extends StatelessWidget {
                               color: Colors.black, size: 22),
                         ),
                         const SizedBox(width: 12),
-                        const Text('Habitzzz',
+                        Text('Habitzzz',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: textPrimary,
                                 fontWeight: FontWeight.w800)),
                       ],
                     ),
-                    content: const Column(
+                    content: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Habitzzz helps you build better habits and track your daily tasks with ease.',
                           style: TextStyle(
-                              color: Colors.white70, fontSize: 14, height: 1.5),
+                              color: textSecondary, fontSize: 14, height: 1.5),
                         ),
-                        SizedBox(height: 12),
+                        const SizedBox(height: 12),
                         Text('Made by the Habitzzz team.',
-                            style:
-                                TextStyle(color: Colors.white38, fontSize: 13)),
+                            style: TextStyle(color: textSecondary, fontSize: 13)),
                       ],
                     ),
                     actions: [
@@ -172,7 +211,7 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              }),
+              }, iconColor: iconColor, textColor: textPrimary, cardBg: cardBg, dividerColor: dividerColor),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -203,37 +242,40 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String title) => Text(
+  Widget _sectionTitle(String title, {required Color color}) => Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.white38,
+            color: color,
             letterSpacing: 0.5),
       );
 
-  Widget _settingsItem(IconData icon, String label, VoidCallback onTap) {
+  Widget _settingsItem(IconData icon, String label, VoidCallback onTap,
+      {required Color iconColor,
+      required Color textColor,
+      required Color cardBg,
+      required Color dividerColor}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF161616),
+          color: cardBg,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white54, size: 20),
+            Icon(icon, color: iconColor, size: 20),
             const SizedBox(width: 14),
             Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 15,
-                    color: Colors.white,
+                    color: textColor,
                     fontWeight: FontWeight.w500)),
             const Spacer(),
-            const Icon(Icons.chevron_right_rounded,
-                color: Colors.white24, size: 20),
+            Icon(Icons.chevron_right_rounded, color: dividerColor, size: 20),
           ],
         ),
       ),

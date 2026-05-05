@@ -4,8 +4,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../services/task_service.dart';
+import '../services/theme_service.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -58,10 +60,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = context.watch<ThemeService>();
+    final isDark = themeService.isDarkMode;
+
+    final bg = isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
+    final cardBg = isDark ? const Color(0xFF141414) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF121212);
+    final textSecondary = isDark ? Colors.white38 : const Color(0xFF888888);
+    final textTertiary = isDark ? Colors.white54 : const Color(0xFF666666);
+    final listBg = isDark ? const Color(0xFF161616) : Colors.white;
+
     final monthName = DateFormat('MMMM yyyy').format(_currentMonth);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: bg,
       body: SafeArea(
         child: StreamBuilder<QuerySnapshot>(
           stream: TaskService.streamTasks(_userId),
@@ -86,24 +98,24 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Statistics',
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Track your monthly progress',
-                    style: TextStyle(fontSize: 13, color: Colors.white38),
+                    style: TextStyle(fontSize: 13, color: textSecondary),
                   ),
                   const SizedBox(height: 24),
 
                   Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     padding: const EdgeInsets.all(16),
@@ -126,33 +138,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           _focusedDay = focusedDay;
                         });
                       },
-                      calendarStyle: const CalendarStyle(
-                        defaultTextStyle: TextStyle(color: Colors.white),
-                        weekendTextStyle: TextStyle(color: Colors.white70),
-                        selectedTextStyle: TextStyle(color: Colors.black),
-                        todayTextStyle: TextStyle(color: Colors.white),
-                        selectedDecoration: BoxDecoration(
+                      calendarStyle: CalendarStyle(
+                        defaultTextStyle: TextStyle(color: textPrimary),
+                        weekendTextStyle: TextStyle(color: textTertiary),
+                        selectedTextStyle: const TextStyle(color: Colors.black),
+                        todayTextStyle: TextStyle(color: isDark ? Colors.white : const Color(0xFF121212)),
+                        selectedDecoration: const BoxDecoration(
                           color: Color(0xFF00E676),
                           shape: BoxShape.circle,
                         ),
-                        todayDecoration: BoxDecoration(
+                        todayDecoration: const BoxDecoration(
                           color: Color(0xFF00E676),
                           shape: BoxShape.circle,
                         ),
                         outsideDaysVisible: false,
                       ),
-                      headerStyle: const HeaderStyle(
+                      headerStyle: HeaderStyle(
                         formatButtonVisible: false,
                         titleCentered: true,
                         titleTextStyle: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: textPrimary,
                         ),
-                        leftChevronIcon:
-                            Icon(Icons.chevron_left, color: Colors.white54),
-                        rightChevronIcon:
-                            Icon(Icons.chevron_right, color: Colors.white54),
+                        leftChevronIcon: Icon(Icons.chevron_left, color: textTertiary),
+                        rightChevronIcon: Icon(Icons.chevron_right, color: textTertiary),
                       ),
                     ),
                   ),
@@ -162,15 +172,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStat('Total', '$total'),
-                        _buildStat('Completed', '$done'),
-                        _buildStat('Rate', '${rate.toStringAsFixed(0)}%'),
+                        _buildStat('Total', '$total', textPrimary, textSecondary),
+                        _buildStat('Completed', '$done', textPrimary, textSecondary),
+                        _buildStat('Rate', '${rate.toStringAsFixed(0)}%', textPrimary, textSecondary),
                       ],
                     ),
                   ),
@@ -179,10 +189,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
                   Text(
                     '$monthName Progress',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -190,17 +200,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF141414),
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: total == 0
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 120,
                             child: Center(
                               child: Text(
                                 'Add tasks to see your breakdown',
-                                style: TextStyle(
-                                    color: Colors.white38, fontSize: 14),
+                                style: TextStyle(color: textSecondary, fontSize: 14),
                               ),
                             ),
                           )
@@ -219,12 +228,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
                   const SizedBox(height: 32),
 
-                  const Text(
+                  Text(
                     'Activities this month',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -249,7 +258,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF161616),
+                                color: listBg,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border(
                                   left: BorderSide(color: task.color, width: 3),
@@ -275,50 +284,38 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           task.name,
                                           style: TextStyle(
-                                            color: task.isDone
-                                                ? Colors.white38
-                                                : Colors.white,
+                                            color: task.isDone ? textSecondary : textPrimary,
                                             fontWeight: FontWeight.w600,
                                             fontSize: 15,
-                                            decoration: task.isDone
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                            decorationColor: Colors.white38,
+                                            decoration: task.isDone ? TextDecoration.lineThrough : null,
+                                            decorationColor: textSecondary,
                                           ),
                                         ),
                                         if (task.description.isNotEmpty)
                                           Text(
                                             task.description,
-                                            style: const TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 12,
-                                            ),
+                                            style: TextStyle(color: textSecondary, fontSize: 12),
                                           ),
                                       ],
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: task.isDone
-                                          ? const Color(0xFF00E676)
-                                              .withOpacity(0.12)
-                                          : Colors.white.withOpacity(0.05),
+                                          ? const Color(0xFF00E676).withOpacity(0.12)
+                                          : (isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFE0E0E0)),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       task.isDone ? 'Done' : 'Pending',
                                       style: TextStyle(
-                                        color: task.isDone
-                                            ? const Color(0xFF00E676)
-                                            : Colors.white38,
+                                        color: task.isDone ? const Color(0xFF00E676) : textSecondary,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 12,
                                       ),
@@ -338,20 +335,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildStat(String label, String value) => Column(
+  Widget _buildStat(String label, String value, Color textPrimary, Color textSecondary) => Column(
         children: [
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: textPrimary,
               fontSize: 22,
               fontWeight: FontWeight.w800,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white54,
+            style: TextStyle(
+              color: textSecondary,
               fontSize: 13,
             ),
           ),

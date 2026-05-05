@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   static final _auth = FirebaseAuth.instance;
+  static final _db = FirebaseFirestore.instance;
 
   static User? get currentUser => _auth.currentUser;
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -10,10 +12,19 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await _auth.signInWithEmailAndPassword(
+    final credential = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
+    final doc = await _db.collection('users').doc(credential.user!.uid).get();
+    if (!doc.exists) {
+      await _db.collection('users').doc(credential.user!.uid).set({
+        'name': credential.user?.displayName ?? '',
+        'email': email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    return credential;
   }
 
   static Future<UserCredential> signUp({
@@ -26,6 +37,11 @@ class AuthService {
       password: password,
     );
     await credential.user?.updateDisplayName(name);
+    await _db.collection('users').doc(credential.user!.uid).set({
+      'name': name,
+      'email': email,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
     return credential;
   }
 
@@ -37,11 +53,11 @@ class AuthService {
     await _auth.sendPasswordResetEmail(email: email);
   }
 
-  static Future<void> updateProfile({String? name, String? photoUrl}) async {
+  static Future<void> updateProfile({String? name}) async {
     final user = _auth.currentUser;
-    if (user != null) {
-      if (name != null) await user.updateDisplayName(name);
-      if (photoUrl != null) await user.updatePhotoURL(photoUrl);
+    if (user != null && name != null) {
+      await user.updateDisplayName(name);
+      await _db.collection('users').doc(user.uid).update({'name': name});
     }
   }
 }

@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import 'services/theme_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_scaffold.dart';
+import 'screens/edit_profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +33,12 @@ void main() async {
       statusBarIconBrightness: Brightness.light,
     ),
   );
-  runApp(const HabitzzApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeService(),
+      child: const HabitzzApp(),
+    ),
+  );
 }
 
 class HabitzzApp extends StatelessWidget {
@@ -38,25 +46,19 @@ class HabitzzApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
     return MaterialApp(
       title: 'Habitzzz',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00E676),
-          secondary: Color(0xFF69F0AE),
-          surface: Color(0xFF121212),
-          onPrimary: Colors.black,
-          onSurface: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
-        useMaterial3: true,
-      ),
+      theme: themeService.lightTheme,
+      darkTheme: themeService.darkTheme,
+      themeMode: themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/auth': (context) => const AuthScreen(),
         '/home': (context) => const MainScaffold(),
+        '/edit-profile': (context) => const EditProfileScreen(),
       },
     );
   }
