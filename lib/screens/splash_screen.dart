@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/theme_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -30,7 +33,12 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Timer(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/auth');
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        Navigator.pushReplacementNamed(context, '/auth');
+      }
     });
   }
 
@@ -42,8 +50,15 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final themeService = context.watch<ThemeService>();
+    final isDark = themeService.isDarkMode;
+
+    final bg = isDark ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
+    final textPrimary = isDark ? Colors.white : const Color(0xFF121212);
+    final textSecondary = isDark ? Colors.white38 : const Color(0xFF888888);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
+      backgroundColor: bg,
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -52,7 +67,6 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
                 Container(
                   width: 110,
                   height: 110,
@@ -74,20 +88,19 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 28),
-                // App Name
                 RichText(
-                  text: const TextSpan(
+                  text: TextSpan(
                     children: [
                       TextSpan(
                         text: 'Habitz',
                         style: TextStyle(
                           fontSize: 42,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                          color: textPrimary,
                           letterSpacing: -1,
                         ),
                       ),
-                      TextSpan(
+                      const TextSpan(
                         text: 'zz',
                         style: TextStyle(
                           fontSize: 42,
@@ -100,16 +113,15 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Build habits. Change your life.',
                   style: TextStyle(
                     fontSize: 15,
-                    color: Colors.white38,
+                    color: textSecondary,
                     letterSpacing: 0.3,
                   ),
                 ),
                 const SizedBox(height: 60),
-                // Loading indicator
                 SizedBox(
                   width: 28,
                   height: 28,
